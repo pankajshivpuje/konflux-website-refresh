@@ -1,0 +1,141 @@
+= Getting started with {ProductName}
+
+Adopting new platforms is always challenging.
+While we aim to make use of industry-standard terminology and processes, we may need to introduce additional concepts.
+You can find these definitions in the xref:glossary:index.adoc[glossary].
+
+== Key concepts
+
+=== Namespace
+In Kubernetes, link:https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/[namespaces]
+provide a foundational mechanism for isolating groups of resources within a single cluster.
+{ProductName} scopes all the resources and APIs you interact with to namespaces, including your components, applications, snapshots, secrets, and the Tekton PipelineRuns that perform builds, tests, and releases.
+
+=== Tenant namespace
+Tenant namespaces are where Tekton Pipelines produce artifacts that more than one individual can access according to their roles and the permissions defined by link:https://konflux-ci.dev/architecture/ADR/0011-roles-and-permissions.html[those roles].
+The tenant namespaces can be either for an individual or a team.
+
+//TODO: Document the process for getting access to/creating new namespaces (We should store this information in a seperate file and link to it. It doesn't need to be in this document).
+
+In {ProductName}, you operate in a tenant namespace scoped to your team.
+One team can span multiple namespaces if needed, each with many applications and components.
+We recommend that you not share namespaces with many teams.
+
+You will use your tenant namespaces to do the following:
+
+- xref:building:creating.adoc[Create components and applications].
+- Run the xref:building:index.adoc[Tekton PipelineRuns] defined in your Git repositories.
+- View and iterate on the xref:testing:index.adoc[results of your IntegrationTestScenarios].
+- xref:releasing:index.adoc[Create releases] for specific snapshots according to your ReleasePlans.
+
+=== Managed Namespaces
+Managed namespaces are where you manage release pipelines and credentials for your organization.
+The primary interaction between a tenant and managed namespaces involves creating a release in a tenant namespace that references a specific snapshot in the managed namespace.
+You can then trigger the release pipeline for that snapshot in the managed namespace.
+See xref:releasing:index.adoc[release documentation] for more information.
+
+=== OCI Artifact
+OCI is the link:https://github.com/opencontainers[open containers initiative].
+This initiative contains an link:https://github.com/opencontainers/image-spec[image spec] that permits storing link:https://github.com/opencontainers/image-spec/blob/main/artifacts-guidance.md[artifacts other than container images] in container registries, which we call *OCI Artifacts*.
+
+Konflux pushes artifacts that you build in your tenant namespace to an OCI registry along with their supporting metadata (including xref:metadata:index.adoc[SLSA provenance attestations and SBOMs]).
+
+=== Build Pipeline
+When you create a component in {ProductName}, the system pushes a build pipeline to the Git repository in the `.tekton` directory and installs a webhook.
+
+Upon a new push or pull request (_pull requests_ are referred to as _merge requests_ in GitLab's terminology), the system runs the pipeline defined in the Git repository.
+This pipeline describes the process necessary to build and test a specific artifact.
+
+The build process includes Tekton Tasks such as:
+
+- Cloning the Git repository.
+- Prefetching dependencies.
+- Building the OCI artifact.
+- Building the source SBOM.
+- Generating the source container.
+
+The test process includes Tekton Tasks such as:
+
+- Running Snyk scans.
+- Checking for CVEs with `clair-in-ci`.
+- Running an antivirus scan on the artifact.
+
+{ProductName} inherits the pattern of defining Tekton build pipelines in Git from its use of https://pipelinesascode.com/[Pipelines as Code (PaC)].
+PaC enables you to use a Tekton PipelineDefinition within your Git repository, and for the system to trigger that pipeline whenever a team member submits a new commit or pull request to the repository.
+
+=== Custom Resources
+In Kubernetes, a link:https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[Custom Resource (CR)] is an extension of the Kubernetes API.
+
+All Konflux APIs are Kubernetes CRs. This setup enables commonplace Kubernetes client tools, such as link:https://kubernetes.io/docs/reference/kubectl/[kubectl], to understand and interact with {ProductName} APIs. If you're familiar with common Kubernetes resources such as Pods and Deployments, you'll find that Konflux resources appear on the cluster in the same way:
+
+==== Component
+A xref:reference:kube-apis/application-api.adoc#k8s-api-github-com-konflux-ci-application-api-api-v1alpha1-component[Component CR] describes the properties of an OCI artifact.
+These properties include the following:
+
+- The Git repository from which the artifact originates.
+- The latest built commit.
+- Initial build configuration parameters.
+- Relationships to other components.
+
+The CR also contains a reference to the single application that owns it.
+Component names are unique in a namespace, even when you use the components in different applications.
+
+==== Application
+An xref:reference:kube-apis/application-api.adoc#k8s-api-github-com-konflux-ci-application-api-api-v1alpha1-application[Application CR] owns multiple components. It helps to logically group components in the UI.
+
+When a new component's build pipeline is complete, the Integration Service, which contains the latest Git and OCI references, creates a new snapshot from each of the Component CRs, as well as the just-produced component artifact.
+The IntegrationTestScenarios use this output to run.
+
+==== Snapshot
+A xref:reference:kube-apis/application-api.adoc#k8s-api-github-com-konflux-ci-application-api-api-v1alpha1-snapshot[Snapshot CR] is an immutable set of component references.
+It can be created from push or pull request events.
+A snapshot defines a set of components, which are either tested or released together.
+
+Over time, as you produce more builds, your tenant namespace will contain many snapshots.
+Understand that at any point in time, a given snapshot _might not necessarily_ represent the latest built artifacts for all components in your tenant namespace.
+
+==== IntegrationTestScenario
+An xref:reference:kube-apis/integration-service.adoc#k8s-api-github-com-konflux-ci-integration-service-api-v1alpha1-integrationtestscenario[IntegrationTestScenario (ITS) CR] is a Tekton Pipeline that defines a test to run against an entire snapshot.
+The Integration Service runs all configured ITSs for the snapshot's application.
+The system also creates a default ITS for every new application to enable EnterpriseContractPolicy checks on all components.
+
+You can configure each ITS as optional for release. All non-optional tests must pass before the new component build is "promoted" to update the references on the component CR.
+
+==== EnterpriseContractPolicy
+Building in {ProductName} follows a "build once, release multiple times" mentality, where each release can have separate requirements on the builds before allowing the action.
+You codify these build requirements in an xref:reference:kube-apis/conforma.adoc#k8s-api-github-com-conforma-crds-api-v1alpha1-enterprisecontractpolicy[EnterpriseContractPolicy CR].
+
+When {ProductName} evaluates an ECP against a snapshot, it returns a single result based on the highest violation.
+For example, if all components pass the policy requirements, the policy evaluation is true.
+If a single component in a snapshot fails the policy, however, the overall result is a failure even if all of the rest have clean passes.
+
+==== ReleasePlan
+A xref:reference:kube-apis/release-service.adoc#k8s-api-github-com-konflux-ci-release-service-api-v1alpha1-releaseplan[ReleasePlan (RP) CR] maps an Application you want to release to a release action.
+It defines the process to release future Snapshots of your Application in the managed namespace.
+It also determines whether automatic releases are enabled and whether you want to provide additional data to each future release pipeline.
+
+==== ReleasePlanAdmission
+You also need to create a xref:reference:kube-apis/release-service.adoc#k8s-api-github-com-konflux-ci-release-service-api-v1alpha1-releaseplanadmission[ReleasePlanAdmission (RPA) CR] in the managed namespace.
+It defines the specific pipeline to run and a given ECP, which must pass for each snapshot before that pipeline can proceed.
+It also establishes essential details about the delivery of your content that we want to exercise some control over.
+
+For example, if your release pipeline uses an link:https://Github.com/konflux-ci/release-service-catalog/blob/production/tasks/managed/apply-mapping/apply-mapping.yaml[apply-mapping] task, the `.spec.data.mapping.components` section of this resource will define which destination repositories to push your content to.
+
+==== Release
+Every time you want to release newly built artifacts, you will create a xref:reference:kube-apis/release-service.adoc#k8s-api-github-com-konflux-ci-release-service-api-v1alpha1-release[Release CR] in *your* tenant namespace.
+The Release CR represents your intent to release some content to customers.
+It is an active resource that, when present, will initiate the push of content.
+
+A Release CR references a specific Snapshot and ReleasePlan.
+It indicates your intention to ship the content in the Snapshot by way of the referenced ReleasePlan.
+
+NOTE: It is possible to configure your ReleasePlan with xref:releasing:create-release-plan.adoc[auto-release].
+When enabled, the {ProductName} system will generate your releases for you whenever your snapshots pass all of their IntegrationTestScenarios.
+
+NOTE: https://issues.redhat.com/browse/KONFLUX-1364[Future functionality], will allow you to automatically collect dynamic metadata for inclusion in the autogenerated Release CRs.
+
+include::partial${context}-additional-getting-started.adoc[]
+
+== Getting started with the CLI
+
+include::partial${context}-getting-started-with-the-cli.adoc[]
