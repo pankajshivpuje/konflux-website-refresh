@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 import { ArrowRight, Github, Shield, Zap, Package, Users, CheckCircle, ExternalLink, Factory, Monitor, FileCheck, Lock, ScanLine, Layers, Workflow, Box, RotateCcw, GitBranch } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { OnThisPageNav } from "../components/OnThisPageNav";
 import svgPaths from "../../imports/svg-g8w5a0a3ka";
 function IllustrationCICD() {
@@ -291,6 +291,27 @@ const factoryComponents = [
 export default function HomePage() {
   const [hoveredFactory, setHoveredFactory] = useState<number | null>(null);
   const [selectedStep, setSelectedStep] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const pauseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const AUTOPLAY_INTERVAL = 4000;
+  const PAUSE_DURATION = 10000;
+
+  // Auto-advance carousel
+  useEffect(() => {
+    if (isPaused) return;
+    const timer = setInterval(() => {
+      setSelectedStep((prev) => (prev + 1) % lifecycleSteps.length);
+    }, AUTOPLAY_INTERVAL);
+    return () => clearInterval(timer);
+  }, [isPaused]);
+
+  const handleManualSelect = useCallback((step: number) => {
+    setSelectedStep(step);
+    setIsPaused(true);
+    if (pauseTimeoutRef.current) clearTimeout(pauseTimeoutRef.current);
+    pauseTimeoutRef.current = setTimeout(() => setIsPaused(false), PAUSE_DURATION);
+  }, []);
 
   return (
     <div className="bg-white dark:bg-gray-950 transition-colors duration-200">
@@ -481,7 +502,7 @@ export default function HomePage() {
               {lifecycleSteps.map((step, i) => (
                 <button
                   key={step.title}
-                  onClick={() => setSelectedStep(i)}
+                  onClick={() => handleManualSelect(i)}
                   className="flex flex-col items-center gap-2 cursor-pointer group"
                 >
                   {/* Step indicator dot */}
@@ -545,9 +566,8 @@ export default function HomePage() {
                 {/* Step navigation */}
                 <div className="flex items-center gap-2 mt-6">
                   <button
-                    onClick={() => setSelectedStep(Math.max(0, selectedStep - 1))}
-                    disabled={selectedStep === 0}
-                    className="w-8 h-8 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-violet-600 dark:hover:text-violet-400 hover:border-violet-300 dark:hover:border-violet-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    onClick={() => handleManualSelect((selectedStep - 1 + lifecycleSteps.length) % lifecycleSteps.length)}
+                    className="w-8 h-8 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-violet-600 dark:hover:text-violet-400 hover:border-violet-300 dark:hover:border-violet-600 transition-colors"
                   >
                     <ArrowRight size={14} className="rotate-180" />
                   </button>
@@ -562,9 +582,8 @@ export default function HomePage() {
                     ))}
                   </div>
                   <button
-                    onClick={() => setSelectedStep(Math.min(lifecycleSteps.length - 1, selectedStep + 1))}
-                    disabled={selectedStep === lifecycleSteps.length - 1}
-                    className="w-8 h-8 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-violet-600 dark:hover:text-violet-400 hover:border-violet-300 dark:hover:border-violet-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    onClick={() => handleManualSelect((selectedStep + 1) % lifecycleSteps.length)}
+                    className="w-8 h-8 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-violet-600 dark:hover:text-violet-400 hover:border-violet-300 dark:hover:border-violet-600 transition-colors"
                   >
                     <ArrowRight size={14} />
                   </button>
