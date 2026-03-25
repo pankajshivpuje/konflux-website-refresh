@@ -12,8 +12,8 @@ import TryKonfluxPage from "./pages/TryKonfluxPage";
 import TryKonfluxHelmPage from "./pages/TryKonfluxHelmPage";
 import TryKonfluxTsfPage from "./pages/TryKonfluxTsfPage";
 
-export const router = createBrowserRouter([
-  {
+export const router = createBrowserRouter(
+  [{
     path: "/",
     Component: Layout,
     children: [
@@ -30,5 +30,6 @@ export const router = createBrowserRouter([
       { path: "support", Component: SupportPage },
       { path: "*", Component: HomePage },
     ],
-  },
-]);
+  }],
+  { basename: import.meta.env.BASE_URL },
+);
