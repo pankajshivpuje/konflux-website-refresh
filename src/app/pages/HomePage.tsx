@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { ArrowRight, Github, Shield, Zap, Package, Users, CheckCircle, ExternalLink, Factory, Monitor, FileCheck, Lock, ScanLine, Layers, Workflow, Box, RotateCcw, GitBranch } from "lucide-react";
 import { useState, useEffect, useCallback, useRef } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { OnThisPageNav } from "../components/OnThisPageNav";
 import svgPaths from "../../imports/svg-g8w5a0a3ka";
 function IllustrationCICD() {
@@ -543,71 +544,77 @@ export default function HomePage() {
           </div>
 
           {/* Selected step detail */}
-          <div
-            key={selectedStep}
-            className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm"
-          >
-            <div className="flex flex-col md:flex-row">
-              {/* Left: icon + step info */}
-              <div className="md:w-1/3 bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-950/50 dark:to-gray-900 p-8 flex flex-col justify-center items-center md:items-start border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-800">
-                <div className="w-14 h-14 rounded-2xl bg-violet-600 dark:bg-violet-500 flex items-center justify-center text-white mb-4 shadow-lg shadow-violet-200 dark:shadow-violet-900/40">
-                  {lifecycleSteps[selectedStep].icon}
-                </div>
-                <p className="text-[11px] font-semibold text-violet-500 dark:text-violet-400 uppercase tracking-wider mb-1" style={{ fontFamily: "'Inter', sans-serif" }}>
-                  Step {selectedStep + 1} of {lifecycleSteps.length}
-                </p>
-                <h3
-                  className="text-gray-900 dark:text-white text-center md:text-left"
-                  style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: "1.15rem", lineHeight: 1.3 }}
-                >
-                  {lifecycleDetails[selectedStep].heading}
-                </h3>
-
-                {/* Step navigation */}
-                <div className="flex items-center gap-2 mt-6">
-                  <button
-                    onClick={() => handleManualSelect((selectedStep - 1 + lifecycleSteps.length) % lifecycleSteps.length)}
-                    className="w-8 h-8 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-violet-600 dark:hover:text-violet-400 hover:border-violet-300 dark:hover:border-violet-600 transition-colors"
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={selectedStep}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm"
+            >
+              <div className="flex flex-col md:flex-row">
+                {/* Left: icon + step info */}
+                <div className="md:w-1/3 bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-950/50 dark:to-gray-900 p-8 flex flex-col justify-center items-center md:items-start border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-800">
+                  <div className="w-14 h-14 rounded-2xl bg-violet-600 dark:bg-violet-500 flex items-center justify-center text-white mb-4 shadow-lg shadow-violet-200 dark:shadow-violet-900/40">
+                    {lifecycleSteps[selectedStep].icon}
+                  </div>
+                  <p className="text-[11px] font-semibold text-violet-500 dark:text-violet-400 uppercase tracking-wider mb-1" style={{ fontFamily: "'Inter', sans-serif" }}>
+                    Step {selectedStep + 1} of {lifecycleSteps.length}
+                  </p>
+                  <h3
+                    className="text-gray-900 dark:text-white text-center md:text-left"
+                    style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: "1.15rem", lineHeight: 1.3 }}
                   >
-                    <ArrowRight size={14} className="rotate-180" />
-                  </button>
-                  <div className="flex gap-1">
-                    {lifecycleSteps.map((_, i) => (
-                      <div
-                        key={i}
-                        className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                          i === selectedStep ? "bg-violet-500" : i < selectedStep ? "bg-violet-300 dark:bg-violet-700" : "bg-gray-300 dark:bg-gray-700"
-                        }`}
-                      />
+                    {lifecycleDetails[selectedStep].heading}
+                  </h3>
+
+                  {/* Step navigation */}
+                  <div className="flex items-center gap-2 mt-6">
+                    <button
+                      onClick={() => handleManualSelect((selectedStep - 1 + lifecycleSteps.length) % lifecycleSteps.length)}
+                      className="w-8 h-8 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-violet-600 dark:hover:text-violet-400 hover:border-violet-300 dark:hover:border-violet-600 transition-colors"
+                    >
+                      <ArrowRight size={14} className="rotate-180" />
+                    </button>
+                    <div className="flex gap-1">
+                      {lifecycleSteps.map((_, i) => (
+                        <div
+                          key={i}
+                          className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                            i === selectedStep ? "bg-violet-500" : i < selectedStep ? "bg-violet-300 dark:bg-violet-700" : "bg-gray-300 dark:bg-gray-700"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => handleManualSelect((selectedStep + 1) % lifecycleSteps.length)}
+                      className="w-8 h-8 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-violet-600 dark:hover:text-violet-400 hover:border-violet-300 dark:hover:border-violet-600 transition-colors"
+                    >
+                      <ArrowRight size={14} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Right: description + highlights */}
+                <div className="md:w-2/3 p-8 flex flex-col justify-center">
+                  <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed mb-6" style={{ fontFamily: "'Inter', sans-serif" }}>
+                    {lifecycleDetails[selectedStep].description}
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {lifecycleDetails[selectedStep].highlights.map((highlight) => (
+                      <div key={highlight} className="flex items-start gap-2.5 bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3 border border-gray-100 dark:border-gray-700">
+                        <CheckCircle size={15} className="text-violet-500 dark:text-violet-400 shrink-0 mt-0.5" />
+                        <span className="text-xs text-gray-700 dark:text-gray-300" style={{ fontFamily: "'Inter', sans-serif", fontWeight: 500 }}>
+                          {highlight}
+                        </span>
+                      </div>
                     ))}
                   </div>
-                  <button
-                    onClick={() => handleManualSelect((selectedStep + 1) % lifecycleSteps.length)}
-                    className="w-8 h-8 rounded-lg border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-violet-600 dark:hover:text-violet-400 hover:border-violet-300 dark:hover:border-violet-600 transition-colors"
-                  >
-                    <ArrowRight size={14} />
-                  </button>
                 </div>
               </div>
-
-              {/* Right: description + highlights */}
-              <div className="md:w-2/3 p-8 flex flex-col justify-center">
-                <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed mb-6" style={{ fontFamily: "'Inter', sans-serif" }}>
-                  {lifecycleDetails[selectedStep].description}
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {lifecycleDetails[selectedStep].highlights.map((highlight) => (
-                    <div key={highlight} className="flex items-start gap-2.5 bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3 border border-gray-100 dark:border-gray-700">
-                      <CheckCircle size={15} className="text-violet-500 dark:text-violet-400 shrink-0 mt-0.5" />
-                      <span className="text-xs text-gray-700 dark:text-gray-300" style={{ fontFamily: "'Inter', sans-serif", fontWeight: 500 }}>
-                        {highlight}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
+            </motion.div>
+          </AnimatePresence>
         </div>
       </section>
 
